@@ -95,6 +95,10 @@ cp .bots.yaml.example .bots.yaml
 python app.py
 ```
 
+接收用户的钉钉userid用于工具调用等场景。
+通过在inputs中添加sys_user_id的变量实现。
+
+
 ### .env配置说明
 
 .env文件不存在或者不设置这些变量程序也可以正常启动，但是不一定能正常进行问答。

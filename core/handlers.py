@@ -90,7 +90,7 @@ class DifyAiCardBotHandler(ChatbotHandler):
             request_content = incoming_message.text.content
         conversation_id = self.cache.get(incoming_message.sender_staff_id)
         response = self.dify_api_client.query(
-            inputs={},
+            inputs={"sys_user_id": incoming_message.sender_staff_id},
             query=request_content,
             user=incoming_message.sender_nick,
             response_mode="streaming",
