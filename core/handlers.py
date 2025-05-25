@@ -47,39 +47,47 @@ class DifyAiCardBotHandler(ChatbotHandler):
         card_instance = AICardReplier(self.dingtalk_client, incoming_message)
         # 先投放卡片
         card_instance_id = card_instance.create_and_send_card(card_template_id, card_data, callback_type="STREAM")
-        # 再流式更新卡片
-        try:
-            # full_content_value = await aio_call_with_stream(
-            full_content_value = self._call_dify_with_stream(
-                incoming_message,
-                lambda content_value: card_instance.streaming(
+
+        # 快速返回 ack，避免钉钉超时重试
+        # 钉钉允许在返回 ack 后继续更新卡片
+        import asyncio
+
+        async def update_card():
+            try:
+                full_content_value = self._call_dify_with_stream(
+                    incoming_message,
+                    lambda content_value: card_instance.streaming(
+                        card_instance_id,
+                        content_key=content_key,
+                        content_value=content_value,
+                        append=False,
+                        finished=False,
+                        failed=False,
+                    ),
+                )
+                card_instance.streaming(
                     card_instance_id,
                     content_key=content_key,
-                    content_value=content_value,
+                    content_value=full_content_value,
+                    append=False,
+                    finished=True,
+                    failed=False,
+                )
+            except Exception as e:
+                logger.exception(e)
+                card_instance.streaming(
+                    card_instance_id,
+                    content_key=content_key,
+                    content_value=f"出现了异常: {e}",
                     append=False,
                     finished=False,
-                    failed=False,
-                ),
-            )
-            card_instance.streaming(
-                card_instance_id,
-                content_key=content_key,
-                content_value=full_content_value,
-                append=False,
-                finished=True,
-                failed=False,
-            )
-        except Exception as e:
-            logger.exception(e)
-            card_instance.streaming(
-                card_instance_id,
-                content_key=content_key,
-                content_value=f"出现了异常: {e}",
-                append=False,
-                finished=False,
-                failed=True,
-            )
+                    failed=True,
+                )
 
+        # 启动异步任务更新卡片
+        asyncio.create_task(update_card())
+
+        # 立即返回 ack
         return AckMessage.STATUS_OK, "OK"
 
     def _call_dify_with_stream(self, incoming_message: ChatbotMessage, callback: Callable[[str], None]):
@@ -142,6 +150,9 @@ class DifyAiCardBotHandler(ChatbotHandler):
                 # 对话结束消息处理
                 # 接收到模型服务返回：{'event': 'message_end', 'conversation_id': 'd881314b-5e75-45cb-8aac-16e2bed5a09c', 'message_id': '977bf584-5e11-4493-9b98-e56226d9e9a0', 'created_at': 1722310961, 'task_id': 'b3840f55-34b0-4479-8240-ad6b3af76401', 'id': '977bf584-5e11-4493-9b98-e56226d9e9a0', 'metadata': {'usage': {'prompt_tokens': 1279, 'prompt_unit_price': '0.0005', 'prompt_price_unit': '0.001', 'prompt_price': '0.0006395', 'completion_tokens': 66, 'completion_unit_price': '0.0015', 'completion_price_unit': '0.001', 'completion_price': '0.0000990', 'total_tokens': 507, 'total_price': '0.0002605', 'currency': 'USD', 'latency': 1.715979496948421}}}
                 self.cache.set(incoming_message.sender_staff_id, r.get("conversation_id"))
+            elif r.get("event") in ["parallel_branch_started", "parallel_branch_message", "parallel_branch_finished"]:
+                # 忽略并行分支相关事件，仅记录日志
+                logger.debug(f"Ignoring parallel branch event: {r.get('event')}")
             else:
                 # raise NotImplementedError(f"Event: {r.get('event')}, not implemented.")
                 logger.exception(f"Event: {r.get('event')}, not implemented.")
