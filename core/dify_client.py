@@ -97,6 +97,17 @@ class WorkflowClient(DifyClient):
         return self._send_request("POST", "/workflows/run", data, stream=streaming)
 
 
+class ChatflowClient(DifyClient):
+    def query(self, inputs, query, user, response_mode="blocking", files=None, **kwargs):
+        inputs["query"] = query
+        return self.run(inputs, user, response_mode, files)
+
+    def run(self, inputs, user, response_mode="blocking", files=None):
+        data = {"inputs": inputs, "response_mode": response_mode, "user": user, "files": files}
+        streaming = True if response_mode == "streaming" else False
+        return self._send_request("POST", "/chatflows/run", data, stream=streaming)
+
+
 if __name__ == "__main__":
     client = ChatClient(api_key="app-xxx", base_url="http://192.168.250.64/v1")
     # client = WorkflowClient(api_key="app-xxx", base_url="http://192.168.250.64/v1")

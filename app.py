@@ -9,7 +9,7 @@ from dingtalk_stream import CallbackHandler
 from loguru import logger
 
 from configs import DIFY_OPEN_API_URL, LOG_LEVEL, load_bots_config, DEFAULT_MAX_WORKERS
-from core.dify_client import ChatClient, CompletionClient, WorkflowClient
+from core.dify_client import ChatClient, CompletionClient, WorkflowClient, ChatflowClient
 from core.handlers import HandlerFactory
 
 logger.remove()
@@ -46,6 +46,8 @@ def run():
                 bot_dify_client = CompletionClient(api_key=bot["dify_app_api_key"], base_url=DIFY_OPEN_API_URL)
             elif bot["dify_app_type"].lower() == "workflow":
                 bot_dify_client = WorkflowClient(api_key=bot["dify_app_api_key"], base_url=DIFY_OPEN_API_URL)
+            elif bot["dify_app_type"].lower() == "chatflow":
+                bot_dify_client = ChatflowClient(api_key=bot["dify_app_api_key"], base_url=DIFY_OPEN_API_URL)
             else:
                 raise ValueError(f"不支持的机器人类型：{bot['dify_app_type']}")
             # bot_dify_client = ChatClient(api_key=bot["dify_app_api_key"], base_url=DIFY_OPEN_API_URL)

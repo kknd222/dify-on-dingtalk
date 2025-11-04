@@ -121,7 +121,7 @@ python app.py
 | name                       | 机器人名称，用于区分不同的机器人。                                                                   | 是    |
 | dingtalk_app_client_id     | 钉钉开放平台应用的client_id，可以在钉钉开放平台中获取。                                                    | 是    |
 | dingtalk_app_client_secret | 钉钉开放平台应用的client_secret，可以在钉钉开放平台中获取。                                                | 是    |                |      |
-| dify_app_type              | 对应Dify应用类型聊天助手、工作流、文本生成。须用这3项之一：chatbot, completion, workflow，参考下图，AGENT也算做chatbot。 | 是    |
+| dify_app_type              | 对应Dify应用类型聊天助手、工作流、文本生成。须用这4项之一：chatbot, completion, workflow, chatflow，参考下图，AGENT也算做chatbot。 | 是    |
 | dify_app_api_key           | 对应Dify应用的api_key，可以在应用的api页面中获取。                                                    | 是    |
 | handler                    | handler类名。                                                                          | 是    |
 | max_workers                | 该机器人监听的线程数，不填写默认使用.env中的DEFAULT_MAX_WORKERS配置。                                      | 否    |                                                                             | 否    |
