@@ -97,10 +97,34 @@ class DifyAiCardBotHandler(ChatbotHandler):
         # 立即返回 ack
         return AckMessage.STATUS_OK, "OK"
 
+    def _send_dingtalk_image(self, image_url: str, incoming_message: ChatbotMessage):
+        """
+        处理Dify返回的图片，并将其发送到钉钉
+        :param image_url: Dify返回的图片URL
+        :param incoming_message: 钉钉传入的消息对象
+        """
+        # 1. 下载Dify返回的图片
+        import requests
+        file_response = requests.get(image_url)
+        if file_response.status_code != 200:
+            raise Exception(f"下载Dify文件失败，返回码：{file_response.status_code}，返回内容：{file_response.text}")
+        # 2. 将图片上传到钉钉的临时媒体接口
+        upload_media_response = self.dingtalk_client.upload_media("image", ("image.png", file_response.content))
+        if upload_media_response.status_code != 200:
+            raise Exception(f"上传文件到钉钉失败，返回码：{upload_media_response.status_code}，返回内容：{upload_media_response.text}")
+        media_id = upload_media_response.json().get("media_id")
+        # 3. 使用media_id发送图片消息
+        self.reply_image(media_id, incoming_message)
+
     def _upload_dify_file(self, download_code: str, incoming_message: ChatbotMessage):
-        # get dingtalk robot token
+        """
+        处理钉钉传入的图片，并将其上传到Dify
+        :param download_code: 钉钉图片消息的下载码
+        :param incoming_message: 钉钉传入的消息对象
+        """
+        # 获取钉钉机器人的访问令牌
         token = self.dingtalk_client.get_access_token()
-        # download file from dingtalk
+        # 从钉钉下载文件
         import requests
         url = "https://api.dingtalk.com/v1.0/robot/messageFiles/download"
         headers = {"x-acs-dingtalk-access-token": token}
@@ -109,13 +133,13 @@ class DifyAiCardBotHandler(ChatbotHandler):
         if response.status_code != 200:
             raise Exception(f"调用钉钉文件下载接口失败，返回码：{response.status_code}，返回内容：{response.text}")
         download_url = response.json().get("downloadUrl")
-        # get file name from download_url
+        # 从下载链接中获取文件名
         file_name = download_url.split("?")[0].split("/")[-1]
-        # download file
+        # 下载文件
         file_response = requests.get(download_url)
         if file_response.status_code != 200:
             raise Exception(f"下载钉钉文件失败，返回码：{file_response.status_code}，返回内容：{file_response.text}")
-        # upload file to dify
+        # 将文件上传到Dify
         files = {"file": (file_name, file_response.content)}
         upload_response = self.dify_api_client.file_upload(user=incoming_message.sender_staff_id, files=files)
         if upload_response.status_code != 200:
@@ -246,8 +270,11 @@ class DifyAiCardBotHandler(ChatbotHandler):
                        "node_started", "parallel_branch_started", "parallel_branch_message",
                        "parallel_branch_finished"]:
                 if evt == "message_file":
-                    # 生成文件：可在此扩展卡片附件渲染
-                    pass
+                    try:
+                        file_url = r.get("url")
+                        self._send_dingtalk_image(file_url, incoming_message)
+                    except Exception as e:
+                        logger.exception(e)
                 elif evt == "workflow_finished":
                     # 在主循环结束后会发送 finished=True；这里无需处理
                     pass
